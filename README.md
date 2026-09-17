@@ -1,3 +1,27 @@
+<p align="center">
+  <a href="https://www.npmjs.com/package/@intuitui-labs/editorial">
+    <img src="https://img.shields.io/npm/v/@intuitui-labs/editorial.svg?style=flat-square&color=black" alt="npm version" />
+  </a>
+  <a href="https://github.com/Intuitui-Labs/editorial/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/Intuitui-Labs/editorial/ci.yml?branch=main&style=flat-square" alt="build status" />
+  </a>
+  <a href="https://bundlephobia.com/package/@intuitui-labs/editorial">
+    <img src="https://img.shields.io/bundlephobia/minzip/@intuitui-labs/editorial?style=flat-square&color=blue" alt="bundle size" />
+  </a>
+  <a href="https://github.com/Intuitui-Labs/editorial/blob/main/LICENSE">
+    <img src="https://img.shields.io/npm/l/@intuitui-labs/editorial?style=flat-square&color=green" alt="license" />
+  </a>
+  <a href="https://standardschema.dev/">
+    <img src="https://img.shields.io/badge/Standard--Schema-compliant-6366f1?style=flat-square" alt="standard schema" />
+  </a>
+  <a href="https://vitest.dev/">
+    <img src="https://img.shields.io/badge/tested%20with-vitest%20v5-729B1B?style=flat-square" alt="vitest 5" />
+  </a>
+  <a href="https://www.npmjs.com/package/@intuitui-labs/editorial">
+    <img src="https://img.shields.io/npm/types/@intuitui-labs/editorial?style=flat-square" alt="types" />
+  </a>
+</p>
+
 # @intuitui-labs/editorial
 
 > **Provider-neutral, headless editorial publishing contracts, multi-format ingestion (.md, .txt, .json), Git provenance, and distribution ledger.**
@@ -115,3 +139,4 @@ const deliveries = await dispatchArticlePublished({
 ## Documentation
 - [Testing Specifications & Evidence Protocol](docs/testing.md)
 - [NPM Publishing Guide](docs/publishing.md)
+- [Badges, Metrics & Quality Signals Landscape](docs/badges-and-metrics.md)
