@@ -1,6 +1,6 @@
 {
   "name": "@intuitui-labs/editorial",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Provider-neutral editorial publishing contracts, page metadata schemas, and distribution ledger",
   "type": "module",
   "main": "dist/index.js",
