@@ -111,3 +111,7 @@ const deliveries = await dispatchArticlePublished({
   now: new Date().toISOString(),
 });
 ```
+
+## Documentation
+- [Testing Specifications & Evidence Protocol](docs/testing.md)
+- [NPM Publishing Guide](docs/publishing.md)
