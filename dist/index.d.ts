@@ -5,4 +5,5 @@ export * from './page-metadata.js';
 export * from './schema.js';
 export * from './distribution-controller.js';
 export * from './provenance.js';
+export * from './validator.js';
 //# sourceMappingURL=index.d.ts.map

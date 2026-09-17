@@ -8,6 +8,15 @@ import type {
   SubmissionStatus,
   TranslationStatus,
 } from './domain.js';
+import {
+  type SchemaValidator,
+  type StandardSchemaV1,
+  type ValidationResult,
+  resolveValidator,
+  defaultArticleValidator,
+} from './validator.js';
+
+export * from './validator.js';
 
 export const publicationSchema = z.enum([
   'edlove',
@@ -114,20 +123,32 @@ export type DistributionPolicyConfig = z.infer<typeof distributionPolicySchema>;
 
 export type SupportedContentFormat = 'markdown' | 'mdx' | 'text' | 'json' | 'html';
 
-export interface ParsedEditorialDocument {
-  frontmatter: ArticleFrontmatter;
+export interface ParseOptions<T = ArticleFrontmatter> {
+  hintFormat?: SupportedContentFormat;
+  validator?: SchemaValidator<T>;
+}
+
+export interface ParsedEditorialDocument<T = ArticleFrontmatter> {
+  frontmatter: T;
   body: string;
   format: SupportedContentFormat;
 }
 
 /**
- * Headless multi-format document parser.
+ * Headless multi-format document parser with swappable schema validation.
  * Supports Markdown/MDX frontmatter, JSON bundles, and structured Plain Text (.txt).
+ * Schema validator defaults to built-in Zod articleFrontmatterSchema, but can be
+ * swapped with Standard Schema (~standard), Valibot, ArkType, custom validator function,
+ * or defaultArticleValidator (zero dependencies).
  */
-export function parseEditorialDocument(
+export function parseEditorialDocument<T = ArticleFrontmatter>(
   rawContent: string,
-  hintFormat?: SupportedContentFormat
-): ParsedEditorialDocument {
+  options?: ParseOptions<T> | SupportedContentFormat
+): ParsedEditorialDocument<T> {
+  const opts: ParseOptions<T> = typeof options === 'string' ? { hintFormat: options } : options || {};
+  const { hintFormat, validator } = opts;
+  const validate = resolveValidator<T>(validator || (articleFrontmatterSchema as unknown as SchemaValidator<T>));
+
   const trimmed = rawContent.trim();
 
   // 1. JSON format detection
@@ -135,14 +156,15 @@ export function parseEditorialDocument(
     try {
       const parsed = JSON.parse(trimmed);
       const { body = '', content = '', text = '', ...meta } = parsed;
-      const frontmatter = articleFrontmatterSchema.parse(meta);
+      const frontmatter = validate(meta);
       return {
         frontmatter,
         body: body || content || text,
         format: 'json',
       };
-    } catch {
-      // If JSON parse fails, fallback
+    } catch (err) {
+      if (hintFormat === 'json') throw err;
+      // If JSON parse fails without explicit hint, fallback
     }
   }
 
@@ -161,7 +183,7 @@ export function parseEditorialDocument(
         let val = line.slice(colonIdx + 1).trim();
 
         if (val.startsWith('[') && val.endsWith(']')) {
-          meta[key] = val.slice(1, -1).split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
+          meta[key] = val.slice(1, -1).split(',').map((s: string) => s.trim().replace(/^['"]|['"]$/g, ''));
         } else if (val === 'true') {
           meta[key] = true;
         } else if (val === 'false') {
@@ -173,7 +195,7 @@ export function parseEditorialDocument(
         }
       }
 
-      const frontmatter = articleFrontmatterSchema.parse(meta);
+      const frontmatter = validate(meta);
       const format = hintFormat || 'markdown';
       return { frontmatter, body, format };
     }
@@ -193,7 +215,7 @@ export function parseEditorialDocument(
   };
 
   return {
-    frontmatter: articleFrontmatterSchema.parse(defaultMeta),
+    frontmatter: validate(defaultMeta),
     body,
     format: 'text',
   };

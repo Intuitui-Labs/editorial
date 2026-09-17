@@ -14,6 +14,7 @@ import {
 import {
   articleFrontmatterSchema,
   parseEditorialDocument,
+  defaultArticleValidator,
 } from './schema.js';
 import { DistributionController } from './distribution-controller.js';
 import { createProvenanceSlots } from './provenance.js';
@@ -259,5 +260,87 @@ describe('G1 Boundary: Headless Provenance Presenter & Arbitrary Field Mapping',
     expect(slots.licenseBadge.value).toBe('CC BY-SA 4.0'); // fallback
     expect(slots.publishedText).toBe('today');
     expect(slots.isModified).toBe(false);
+  });
+});
+
+describe('G1: Swappable Schema & Custom Validator Protocol', () => {
+  it('allows replacing Zod with zero-dependency defaultArticleValidator', () => {
+    const rawYaml = `---
+title: "Zero Dep Article"
+publishDate: 2026-09-17
+---
+Zero dep content`;
+
+    const doc = parseEditorialDocument(rawYaml, {
+      validator: defaultArticleValidator,
+    });
+
+    expect(doc.frontmatter.title).toBe('Zero Dep Article');
+    expect(doc.frontmatter.workId).toBe('zero-dep-article');
+    expect(doc.frontmatter.status).toBe('draft');
+  });
+
+  it('allows custom function validator with custom shape', () => {
+    interface SimpleArticle {
+      headline: string;
+      customTag: string;
+    }
+
+    const customValidator = (raw: any): SimpleArticle => {
+      if (!raw.headline) throw new Error('headline required');
+      return {
+        headline: String(raw.headline),
+        customTag: raw.tag || 'general',
+      };
+    };
+
+    const doc = parseEditorialDocument<SimpleArticle>(
+      `---
+headline: "Custom Shaped Metadata"
+tag: "tech"
+---
+Content with custom schema`,
+      { validator: customValidator }
+    );
+
+    expect(doc.frontmatter.headline).toBe('Custom Shaped Metadata');
+    expect(doc.frontmatter.customTag).toBe('tech');
+  });
+
+  it('swaps in Standard Schema (~standard) compliant object', () => {
+    const mockStandardSchema = {
+      '~standard': {
+        version: 1,
+        vendor: 'mock-valibot',
+        validate(value: any) {
+          if (!value.title) {
+            return { issues: [{ message: 'Title is missing in Standard Schema' }] };
+          }
+          return { value: { ...value, workId: value.workId || 'standard-work' } };
+        },
+      },
+    };
+
+    const doc = parseEditorialDocument(
+      `---
+title: "Standard Schema Article"
+publishDate: 2026-09-17
+---
+Body`,
+      { validator: mockStandardSchema as any }
+    );
+
+    expect(doc.frontmatter.title).toBe('Standard Schema Article');
+    expect(doc.frontmatter.workId).toBe('standard-work');
+  });
+
+  it('reports all aggregated validation errors when validation fails', () => {
+    const invalidYaml = `---
+publishDate: 2026-09-17
+---
+Missing title and workId`;
+    expect(() => {
+      parseEditorialDocument(invalidYaml);
+    }).toThrow(/validation failed/i);
   });
 });
