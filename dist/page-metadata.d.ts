@@ -3,6 +3,8 @@
  *
  * Extracts first-commit (published) and latest-commit (modified) timestamps directly from
  * git history for every page, generating Schema.org JSON-LD and editorial contracts.
+ *
+ * Supports Astro, Next.js (App & Pages), SvelteKit, Nuxt, Remix, and static Markdown/Text.
  */
 export interface PageEditorialMetadata {
     title: string;
@@ -17,24 +19,16 @@ export interface PageEditorialMetadata {
     language?: string;
     keywords?: string[];
 }
-/**
- * Resolves a route pathname to an existing source file on disk
- */
-export declare function resolvePageSourceFile(routeOrPath: string, rootDir?: string): string;
-/**
- * Extracts ISO commit dates from Git history for a given file.
- * Returns { published, modified } ISO 8601 strings.
- *
- * In development mode, returns instant timestamps without spawning child processes,
- * preventing Windows libuv assertion crashes.
- */
-export declare function getGitDates(filePathOrRoute: string, cwd?: string): {
+export interface ResolvePageSourceOptions {
+    rootDir?: string;
+    customCandidates?: string[];
+    allowedExtensions?: string[];
+}
+export declare function resolvePageSourceFile(routeOrPath: string, options?: ResolvePageSourceOptions | string): string;
+export declare function getGitDates(filePathOrRoute: string, optionsOrCwd?: ResolvePageSourceOptions | string): {
     published: string;
     modified: string;
 };
-/**
- * Generates Schema.org JSON-LD WebPage metadata for any page
- */
 export declare function generatePageStructuredData(meta: PageEditorialMetadata): {
     '@context': string;
     '@type': string;

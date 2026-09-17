@@ -14,21 +14,73 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.js",
+      "default": "./dist/schema.js"
+    },
+    "./controller": {
+      "types": "./dist/distribution-controller.d.ts",
+      "import": "./dist/distribution-controller.js",
+      "default": "./dist/distribution-controller.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "default": "./dist/cli.js"
+    },
     "./*": {
       "types": "./dist/*.d.ts",
       "import": "./dist/*.js",
       "default": "./dist/*.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./provenance": {
+      "types": "./dist/provenance.d.ts",
+      "import": "./dist/provenance.js",
+      "default": "./dist/provenance.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check-types": "tsc --build --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:fast": "vitest run --tagsFilter \"pure && fast\"",
+    "test:g0": "vitest run --tagsFilter \"pure && fast\"",
+    "test:watch": "vitest",
+    "test:g1": "vitest run --tagsFilter \"boundary\"",
+    "prepublishOnly": "pnpm run check-types && pnpm run test && pnpm run build"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",
     "typescript": "7.0.2",
-    "vitest": "^4.1.11"
-  }
+    "vitest": "^5.0.1"
+  },
+  "bin": {
+    "editorial": "./bin/editorial.js"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "license": "MIT",
+  "author": "Intuitui Labs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/intuitui-labs/editorial.git"
+  },
+  "keywords": [
+    "editorial",
+    "publishing",
+    "headless",
+    "syndication",
+    "postiz",
+    "provenance",
+    "schema-org",
+    "astro",
+    "nextjs",
+    "vitest5"
+  ]
 }

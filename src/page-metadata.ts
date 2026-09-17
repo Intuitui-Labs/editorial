@@ -3,6 +3,8 @@
  * 
  * Extracts first-commit (published) and latest-commit (modified) timestamps directly from
  * git history for every page, generating Schema.org JSON-LD and editorial contracts.
+ * 
+ * Supports Astro, Next.js (App & Pages), SvelteKit, Nuxt, Remix, and static Markdown/Text.
  */
 
 import { execSync } from 'child_process';
@@ -24,29 +26,85 @@ export interface PageEditorialMetadata {
   keywords?: string[];
 }
 
-// In-memory cache to prevent repeated git log invocations across SSG builds
+export interface ResolvePageSourceOptions {
+  rootDir?: string;
+  customCandidates?: string[];
+  allowedExtensions?: string[];
+}
+
 const gitCache = new Map<string, { published: string; modified: string }>();
 
-/**
- * Resolves a route pathname to an existing source file on disk
- */
-export function resolvePageSourceFile(routeOrPath: string, rootDir: string = process.cwd()): string {
-  // If it's already an existing file path, return it directly
+export function resolvePageSourceFile(
+  routeOrPath: string,
+  options: ResolvePageSourceOptions | string = process.cwd()
+): string {
+  const rootDir = typeof options === 'string' ? options : (options.rootDir ?? process.cwd());
+  const custom = typeof options === 'object' && options.customCandidates ? options.customCandidates : [];
+
   if (fs.existsSync(`${rootDir}/${routeOrPath}`)) {
     return routeOrPath;
   }
 
+  for (const candidate of custom) {
+    if (fs.existsSync(`${rootDir}/${candidate}`)) {
+      return candidate;
+    }
+  }
+
   const clean = routeOrPath.replace(/^\/|\/$/g, '');
-  if (!clean) return 'src/pages/index.astro';
+  
+  if (!clean) {
+    const indexCandidates = [
+      'src/pages/index.astro',
+      'app/page.tsx',
+      'app/page.jsx',
+      'src/app/page.tsx',
+      'src/app/page.jsx',
+      'pages/index.tsx',
+      'pages/index.jsx',
+      'src/pages/index.tsx',
+      'src/routes/+page.svelte',
+      'pages/index.vue',
+      'index.html',
+    ];
+    for (const c of indexCandidates) {
+      if (fs.existsSync(`${rootDir}/${c}`)) return c;
+    }
+    return 'src/pages/index.astro';
+  }
 
   const segments = clean.split('/');
-  const candidates = [
-    `src/pages/${clean}.astro`,
-    `src/pages/${clean}/index.astro`,
-    `src/pages/${segments[0]}/[slug].astro`,
-    `src/pages/${segments[0]}/[...slug].astro`,
-    `src/pages/${clean}.md`,
+  const baseSegment = segments[0] || '';
+
+  const extensions = ['.md', '.mdx', '.txt', '.json', '.html', '.astro', '.tsx', '.jsx', '.svelte', '.vue'];
+  const candidates: string[] = [];
+
+  const searchDirs = [
+    'src/content/journal',
+    'src/content',
+    'content/journal',
+    'content',
+    'src/pages',
+    'pages',
+    'app',
+    'src/app',
+    'src/routes',
   ];
+
+  for (const dir of searchDirs) {
+    for (const ext of extensions) {
+      candidates.push(`${dir}/${clean}${ext}`);
+      candidates.push(`${dir}/${clean}/index${ext}`);
+      if (baseSegment) {
+        candidates.push(`${dir}/${baseSegment}/[slug]${ext}`);
+        candidates.push(`${dir}/${baseSegment}/[...slug]${ext}`);
+      }
+    }
+  }
+
+  for (const ext of extensions) {
+    candidates.push(`${clean}${ext}`);
+  }
 
   for (const candidate of candidates) {
     if (fs.existsSync(`${rootDir}/${candidate}`)) {
@@ -57,24 +115,17 @@ export function resolvePageSourceFile(routeOrPath: string, rootDir: string = pro
   return 'src/pages/index.astro';
 }
 
-/**
- * Extracts ISO commit dates from Git history for a given file.
- * Returns { published, modified } ISO 8601 strings.
- * 
- * In development mode, returns instant timestamps without spawning child processes,
- * preventing Windows libuv assertion crashes.
- */
 export function getGitDates(
   filePathOrRoute: string,
-  cwd: string = process.cwd()
+  optionsOrCwd: ResolvePageSourceOptions | string = process.cwd()
 ): { published: string; modified: string } {
-  const resolvedPath = resolvePageSourceFile(filePathOrRoute, cwd);
+  const cwd = typeof optionsOrCwd === 'string' ? optionsOrCwd : (optionsOrCwd.rootDir ?? process.cwd());
+  const resolvedPath = resolvePageSourceFile(filePathOrRoute, optionsOrCwd);
   const cacheKey = `${cwd}:${resolvedPath}`;
   if (gitCache.has(cacheKey)) {
     return gitCache.get(cacheKey)!;
   }
 
-  // In development, avoid continuous child_process spawning on Windows libuv
   if (process.env.NODE_ENV === 'development') {
     const now = new Date().toISOString();
     const devDates = { published: now, modified: now };
@@ -88,7 +139,6 @@ export function getGitDates(
   try {
     const fullPath = `${cwd}/${resolvedPath}`;
     if (fs.existsSync(fullPath)) {
-      // 1. Get latest commit date (modified)
       const modResult = execSync(`git log -1 --format=%aI -- "${resolvedPath}"`, {
         cwd,
         encoding: 'utf-8',
@@ -96,7 +146,6 @@ export function getGitDates(
       }).trim();
       if (modResult) modified = modResult;
 
-      // 2. Get first commit date (published)
       const pubResult = execSync(`git log --follow --format=%aI -- "${resolvedPath}"`, {
         cwd,
         encoding: 'utf-8',
@@ -108,10 +157,9 @@ export function getGitDates(
       }
     }
   } catch {
-    // Fallback if git command fails
+    // Fallback if git fails
   }
 
-  // Fallback to filesystem timestamps if git is absent or file is untracked
   if (!modified || !published) {
     try {
       const fullPath = `${cwd}/${resolvedPath}`;
@@ -136,9 +184,6 @@ export function getGitDates(
   return result;
 }
 
-/**
- * Generates Schema.org JSON-LD WebPage metadata for any page
- */
 export function generatePageStructuredData(meta: PageEditorialMetadata) {
   return {
     '@context': 'https://schema.org',
